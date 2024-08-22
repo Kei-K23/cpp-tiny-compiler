@@ -187,6 +187,39 @@ std::shared_ptr<Node> parseExpression(std::vector<Token> &tokens, size_t &curren
     throw std::runtime_error("Unexpected token type: " + token.type);
 }
 
+void traverseNode(std::shared_ptr<Node> node, std::shared_ptr<Node> parent, const std::function<void(std::shared_ptr<Node>, std::shared_ptr<Node>)> &enter, const std::function<void(std::shared_ptr<Node>, std::shared_ptr<Node>)> &exit);
+
+void traverseArray(
+    const std::vector<std::shared_ptr<Node>> &nodes, std::shared_ptr<Node> parent, const std::function<void(std::shared_ptr<Node>, std::shared_ptr<Node>)> &enter, const std::function<void(std::shared_ptr<Node>, std::shared_ptr<Node>)> &exit)
+{
+    for (const auto &child : nodes)
+    {
+        traverseNode(child, parent, enter, exit);
+    }
+}
+
+void traverseNode(std::shared_ptr<Node> node, std::shared_ptr<Node> parent, const std::function<void(std::shared_ptr<Node>, std::shared_ptr<Node>)> &enter, const std::function<void(std::shared_ptr<Node>, std::shared_ptr<Node>)> &exit)
+{
+    if (enter)
+    {
+        enter(node, parent);
+    }
+
+    if (std::dynamic_pointer_cast<Program>(node))
+    {
+        traverseArray(std::dynamic_pointer_cast<Program>(node)->body, node, enter, exit);
+    }
+    else if (std::dynamic_pointer_cast<CallExpression>(node))
+    {
+        traverseArray(std::dynamic_pointer_cast<CallExpression>(node)->params, node, enter, exit);
+    }
+
+    if (exit)
+    {
+        exit(node, parent);
+    }
+}
+
 // Updated compiler function
 void compiler(const std::string &input)
 {
