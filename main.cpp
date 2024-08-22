@@ -130,16 +130,71 @@ std::vector<Token> tokenizer(const std::string &input)
     return tokens;
 }
 
+// Function initialization
+std::shared_ptr<Node> parseExpression(std::vector<Token> &tokens, size_t &current);
+
+std::shared_ptr<Program> parser(std::vector<Token> &tokens)
+{
+    size_t current = 0;
+    auto ast = std::make_shared<Program>();
+
+    while (current < tokens.size())
+    {
+        ast->body.push_back(parseExpression(tokens, current));
+    }
+
+    return ast;
+}
+
+// Actual implementation for parseExpression
+std::shared_ptr<Node> parseExpression(std::vector<Token> &tokens, size_t &current)
+{
+    Token token = tokens[current];
+
+    // Number token
+    if (token.type == "number")
+    {
+        current++;
+        auto node = std::make_shared<NumberLiteral>();
+        node->value = token.value;
+        return node;
+    }
+
+    if (token.type == "string")
+    {
+        current++;
+        auto node = std::make_shared<StringLiteral>();
+        node->value = token.value;
+        return node;
+    }
+
+    if (token.type == "paren" && token.value == "(")
+    {
+        token = tokens[++current];
+        auto node = std::make_shared<CallExpression>();
+        node->name = token.value;
+
+        token = tokens[++current];
+        while (token.type != "paren" || (token.type == "paren" && token.value != ")"))
+        {
+            node->params.push_back(parseExpression(tokens, current));
+            token = tokens[current];
+        }
+        current++;
+        return node;
+    }
+
+    throw std::runtime_error("Unexpected token type: " + token.type);
+}
+
+// Updated compiler function
 void compiler(const std::string &input)
 {
-    auto output = tokenizer(input);
-    for (auto &i : output)
-    {
-        std::cout << i.type << i.value << std::endl;
-    }
+    auto tokens = tokenizer(input);
+    auto ast = parser(tokens);
 }
 
 int main(void)
 {
-    compiler("concat((add 2 (subtract 4 2)) \"nice\")");
+    compiler("(add 2 (subtract 4 2 1))");
 }
