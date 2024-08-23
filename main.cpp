@@ -1,3 +1,4 @@
+
 #include <iostream>
 #include <vector>
 #include <string>
@@ -12,43 +13,39 @@ struct Token
     std::string value;
 };
 
-// AST Node structure
+// AST Node structures
 struct Node
 {
     virtual ~Node() = default;
 };
 
-// Number literal
 struct NumberLiteral : Node
 {
     std::string value;
 };
 
-// String literal
 struct StringLiteral : Node
 {
     std::string value;
 };
 
-// Function call
 struct CallExpression : Node
 {
     std::string name;
     std::vector<std::shared_ptr<Node>> params;
 };
 
-// Expression
 struct ExpressionStatement : Node
 {
     std::shared_ptr<CallExpression> expression;
 };
 
-// Program
 struct Program : Node
 {
     std::vector<std::shared_ptr<Node>> body;
 };
 
+// Tokenizer function
 std::vector<Token> tokenizer(const std::string &input)
 {
     size_t current = 0;
@@ -57,13 +54,14 @@ std::vector<Token> tokenizer(const std::string &input)
     while (current < input.length())
     {
         char ch = input[current];
-        // Paren
+
         if (ch == '(')
         {
             tokens.push_back({"paren", "("});
             current++;
             continue;
         }
+
         if (ch == ')')
         {
             tokens.push_back({"paren", ")"});
@@ -71,50 +69,41 @@ std::vector<Token> tokenizer(const std::string &input)
             continue;
         }
 
-        // Whitespace
         if (isspace(ch))
         {
-            // Skip the whitespace. Does not store in the vector
             current++;
             continue;
         }
 
-        // Number literal
         if (isdigit(ch))
         {
             std::string value = "";
             while (isdigit(ch))
             {
                 value += ch;
-                // Get next character
                 ch = input[++current];
             }
             tokens.push_back({"number", value});
             continue;
         }
 
-        // String literal
         if (ch == '"')
         {
-            std::string value;
-            // Skip the open '"' and only store actual string block
+            std::string value = "";
             ch = input[++current];
-            // Loop through the end '"'
             while (ch != '"')
             {
                 value += ch;
                 ch = input[++current];
             }
-            // Skip the end '"' and only store actual string block
             current++;
             tokens.push_back({"string", value});
             continue;
         }
 
-        // Keyword like add, subtract, concat
         if (isalpha(ch))
         {
-            std::string value;
+            std::string value = "";
             while (isalpha(ch))
             {
                 value += ch;
@@ -124,13 +113,13 @@ std::vector<Token> tokenizer(const std::string &input)
             continue;
         }
 
-        throw std::runtime_error("Unknow character: " + std::string(1, ch));
+        throw std::runtime_error("Unknown character: " + std::string(1, ch));
     }
 
     return tokens;
 }
 
-// Function initialization
+// Parser function
 std::shared_ptr<Node> parseExpression(std::vector<Token> &tokens, size_t &current);
 
 std::shared_ptr<Program> parser(std::vector<Token> &tokens)
@@ -146,12 +135,10 @@ std::shared_ptr<Program> parser(std::vector<Token> &tokens)
     return ast;
 }
 
-// Actual implementation for parseExpression
 std::shared_ptr<Node> parseExpression(std::vector<Token> &tokens, size_t &current)
 {
     Token token = tokens[current];
 
-    // Number token
     if (token.type == "number")
     {
         current++;
@@ -175,11 +162,13 @@ std::shared_ptr<Node> parseExpression(std::vector<Token> &tokens, size_t &curren
         node->name = token.value;
 
         token = tokens[++current];
+
         while (token.type != "paren" || (token.type == "paren" && token.value != ")"))
         {
             node->params.push_back(parseExpression(tokens, current));
             token = tokens[current];
         }
+
         current++;
         return node;
     }
@@ -187,10 +176,14 @@ std::shared_ptr<Node> parseExpression(std::vector<Token> &tokens, size_t &curren
     throw std::runtime_error("Unexpected token type: " + token.type);
 }
 
-void traverseNode(std::shared_ptr<Node> node, std::shared_ptr<Node> parent, const std::function<void(std::shared_ptr<Node>, std::shared_ptr<Node>)> &enter, const std::function<void(std::shared_ptr<Node>, std::shared_ptr<Node>)> &exit);
+// Traverser function
+void traverseNode(std::shared_ptr<Node> node, std::shared_ptr<Node> parent,
+                  const std::function<void(std::shared_ptr<Node>, std::shared_ptr<Node>)> &enter,
+                  const std::function<void(std::shared_ptr<Node>, std::shared_ptr<Node>)> &exit);
 
-void traverseArray(
-    const std::vector<std::shared_ptr<Node>> &nodes, std::shared_ptr<Node> parent, const std::function<void(std::shared_ptr<Node>, std::shared_ptr<Node>)> &enter, const std::function<void(std::shared_ptr<Node>, std::shared_ptr<Node>)> &exit)
+void traverseArray(const std::vector<std::shared_ptr<Node>> &nodes, std::shared_ptr<Node> parent,
+                   const std::function<void(std::shared_ptr<Node>, std::shared_ptr<Node>)> &enter,
+                   const std::function<void(std::shared_ptr<Node>, std::shared_ptr<Node>)> &exit)
 {
     for (const auto &child : nodes)
     {
@@ -198,12 +191,12 @@ void traverseArray(
     }
 }
 
-void traverseNode(std::shared_ptr<Node> node, std::shared_ptr<Node> parent, const std::function<void(std::shared_ptr<Node>, std::shared_ptr<Node>)> &enter, const std::function<void(std::shared_ptr<Node>, std::shared_ptr<Node>)> &exit)
+void traverseNode(std::shared_ptr<Node> node, std::shared_ptr<Node> parent,
+                  const std::function<void(std::shared_ptr<Node>, std::shared_ptr<Node>)> &enter,
+                  const std::function<void(std::shared_ptr<Node>, std::shared_ptr<Node>)> &exit)
 {
     if (enter)
-    {
         enter(node, parent);
-    }
 
     if (std::dynamic_pointer_cast<Program>(node))
     {
@@ -215,9 +208,7 @@ void traverseNode(std::shared_ptr<Node> node, std::shared_ptr<Node> parent, cons
     }
 
     if (exit)
-    {
         exit(node, parent);
-    }
 }
 
 // Transformer function
@@ -227,54 +218,87 @@ std::shared_ptr<Program> transformer(std::shared_ptr<Program> ast)
 
     traverseNode(ast, nullptr, [&](std::shared_ptr<Node> node, std::shared_ptr<Node> parent)
                  {
-        if (auto number = std::dynamic_pointer_cast<NumberLiteral>(node)) {
-            // Create a new number node
-            auto newNumber = std::make_shared<NumberLiteral>();
-            newNumber->value = number->value;
-            
-            // If there's a parent, add to its parameters; otherwise, ignore
-            if (auto callExpr = std::dynamic_pointer_cast<CallExpression>(parent)) {
-                callExpr->params.push_back(newNumber);
-            }
+        if (std::dynamic_pointer_cast<NumberLiteral>(node)) {
+            newAst->body.push_back(std::make_shared<NumberLiteral>(*std::dynamic_pointer_cast<NumberLiteral>(node)));
         }
 
-        if (auto stringLiteral = std::dynamic_pointer_cast<StringLiteral>(node)) {
-            // Create a new string node
-            auto newString = std::make_shared<StringLiteral>();
-            newString->value = stringLiteral->value;
-
-            // If there's a parent, add to its parameters; otherwise, ignore
-            if (auto callExpr = std::dynamic_pointer_cast<CallExpression>(parent)) {
-                callExpr->params.push_back(newString);
-            }
+        if (std::dynamic_pointer_cast<StringLiteral>(node)) {
+            newAst->body.push_back(std::make_shared<StringLiteral>(*std::dynamic_pointer_cast<StringLiteral>(node)));
         }
 
-        if (auto callExpression = std::dynamic_pointer_cast<CallExpression>(node)) {
-            // Create a new call expression node
-            auto newCall = std::make_shared<CallExpression>();
-            newCall->name = callExpression->name;
+        if (std::dynamic_pointer_cast<CallExpression>(node)) {
+            auto expression = std::make_shared<CallExpression>();
+            expression->name = std::dynamic_pointer_cast<CallExpression>(node)->name;
 
-            // If the parent is null, it's a root expression, so wrap in an ExpressionStatement
-            if (!parent) {
+            for (auto &param : std::dynamic_pointer_cast<CallExpression>(node)->params) {
+                expression->params.push_back(param);
+            }
+
+            if (parent == nullptr) {
                 auto expressionStmt = std::make_shared<ExpressionStatement>();
-                expressionStmt->expression = newCall;
+                expressionStmt->expression = expression;
                 newAst->body.push_back(expressionStmt);
-            } else if (auto parentCall = std::dynamic_pointer_cast<CallExpression>(parent)) {
-                parentCall->params.push_back(newCall);
+            } else {
+                newAst->body.push_back(expression);
             }
         } }, nullptr);
 
     return newAst;
 }
 
-// Updated compiler function
-void compiler(const std::string &input)
+// Code generator function
+std::string codeGenerator(std::shared_ptr<Node> node)
+{
+    if (auto number = std::dynamic_pointer_cast<NumberLiteral>(node))
+    {
+        return number->value;
+    }
+    else if (auto str = std::dynamic_pointer_cast<StringLiteral>(node))
+    {
+        return "\"" + str->value + "\"";
+    }
+    else if (auto call = std::dynamic_pointer_cast<CallExpression>(node))
+    {
+        std::string args;
+        for (size_t i = 0; i < call->params.size(); i++)
+        {
+            args += codeGenerator(call->params[i]);
+            if (i < call->params.size() - 1)
+                args += ", ";
+        }
+        return call->name + "(" + args + ")";
+    }
+    else if (auto exprStmt = std::dynamic_pointer_cast<ExpressionStatement>(node))
+    {
+        return codeGenerator(exprStmt->expression) + ";";
+    }
+
+    throw std::runtime_error("Unknown node type");
+}
+
+std::string codeGenerator(std::shared_ptr<Program> node)
+{
+    std::string code;
+    for (const auto &n : node->body)
+    {
+        code += codeGenerator(n) + "\n";
+    }
+    return code;
+}
+
+// Compiler function
+std::string compiler(const std::string &input)
 {
     auto tokens = tokenizer(input);
     auto ast = parser(tokens);
+    auto newAst = transformer(ast);
+    return codeGenerator(newAst);
 }
 
-int main(void)
+int main()
 {
-    compiler("(add 2 (subtract 4 2 1))");
+    std::string input = "(add 2 (subtract 4 2))";
+    std::string output = compiler(input);
+    std::cout << output << std::endl;
+    return 0;
 }
