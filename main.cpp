@@ -220,6 +220,53 @@ void traverseNode(std::shared_ptr<Node> node, std::shared_ptr<Node> parent, cons
     }
 }
 
+// Transformer function
+std::shared_ptr<Program> transformer(std::shared_ptr<Program> ast)
+{
+    auto newAst = std::make_shared<Program>();
+
+    traverseNode(ast, nullptr, [&](std::shared_ptr<Node> node, std::shared_ptr<Node> parent)
+                 {
+        if (auto number = std::dynamic_pointer_cast<NumberLiteral>(node)) {
+            // Create a new number node
+            auto newNumber = std::make_shared<NumberLiteral>();
+            newNumber->value = number->value;
+            
+            // If there's a parent, add to its parameters; otherwise, ignore
+            if (auto callExpr = std::dynamic_pointer_cast<CallExpression>(parent)) {
+                callExpr->params.push_back(newNumber);
+            }
+        }
+
+        if (auto stringLiteral = std::dynamic_pointer_cast<StringLiteral>(node)) {
+            // Create a new string node
+            auto newString = std::make_shared<StringLiteral>();
+            newString->value = stringLiteral->value;
+
+            // If there's a parent, add to its parameters; otherwise, ignore
+            if (auto callExpr = std::dynamic_pointer_cast<CallExpression>(parent)) {
+                callExpr->params.push_back(newString);
+            }
+        }
+
+        if (auto callExpression = std::dynamic_pointer_cast<CallExpression>(node)) {
+            // Create a new call expression node
+            auto newCall = std::make_shared<CallExpression>();
+            newCall->name = callExpression->name;
+
+            // If the parent is null, it's a root expression, so wrap in an ExpressionStatement
+            if (!parent) {
+                auto expressionStmt = std::make_shared<ExpressionStatement>();
+                expressionStmt->expression = newCall;
+                newAst->body.push_back(expressionStmt);
+            } else if (auto parentCall = std::dynamic_pointer_cast<CallExpression>(parent)) {
+                parentCall->params.push_back(newCall);
+            }
+        } }, nullptr);
+
+    return newAst;
+}
+
 // Updated compiler function
 void compiler(const std::string &input)
 {
